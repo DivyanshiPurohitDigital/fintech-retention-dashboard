@@ -1,0 +1,288 @@
+
+<h2 class="sr-only">Fintech Customer Retention and Revenue Intelligence Dashboard showing cohort analysis, churn prediction, LTV segmentation, and revenue trends for a simulated UK challenger bank.</h2>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+.db-wrap { padding: 1.5rem 0; }
+.db-header { margin-bottom: 1.5rem; }
+.db-title { font-size: 15px; font-weight: 500; color: var(--color-text-primary); }
+.db-sub { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+.metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+.metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 14px 16px; }
+.metric-label { font-size: 11px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+.metric-value { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+.metric-delta { font-size: 11px; margin-top: 4px; }
+.delta-up { color: var(--color-text-success); }
+.delta-down { color: var(--color-text-danger); }
+.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.chart-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; }
+.chart-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+.chart-desc { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 12px; }
+.chart-full { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 16px; }
+.legend-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; font-size: 11px; color: var(--color-text-secondary); }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.controls-row { display: flex; align-items: center; gap: 16px; margin-bottom: 1rem; flex-wrap: wrap; }
+.controls-row label { font-size: 12px; color: var(--color-text-secondary); }
+.controls-row select { font-size: 12px; padding: 4px 8px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); }
+.segment-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.seg-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem; }
+.seg-name { font-size: 12px; font-weight: 500; margin-bottom: 8px; }
+.seg-bar-wrap { height: 4px; background: var(--color-border-tertiary); border-radius: 2px; margin-bottom: 8px; }
+.seg-bar { height: 4px; border-radius: 2px; }
+.seg-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.seg-stat-label { font-size: 10px; color: var(--color-text-secondary); }
+.seg-stat-val { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
+.insight-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.insight { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px; border-left: 2px solid; }
+.insight-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.insight-text { font-size: 12px; color: var(--color-text-primary); line-height: 1.5; }
+.ask-btn { display: inline-block; margin-top: 1rem; font-size: 12px; padding: 6px 14px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); cursor: pointer; }
+</style>
+
+<div class="db-wrap">
+  <div class="db-header">
+    <div class="db-title">Customer Retention & Revenue Intelligence — UK Challenger Bank (Simulated Dataset, 2024)</div>
+    <div class="db-sub">Cohort analysis · Churn prediction · LTV segmentation · Revenue trends &nbsp;|&nbsp; 48,200 customers · 18-month observation window</div>
+  </div>
+
+  <div class="metric-grid">
+    <div class="metric">
+      <div class="metric-label">Monthly Active Users</div>
+      <div class="metric-value">31,450</div>
+      <div class="metric-delta delta-up">+4.2% vs prior month</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Avg Revenue / User</div>
+      <div class="metric-value">£18.40</div>
+      <div class="metric-delta delta-up">+£1.20 MoM</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">30-Day Retention</div>
+      <div class="metric-value">72.3%</div>
+      <div class="metric-delta delta-down">-1.8pp vs cohort avg</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Predicted Churn (90d)</div>
+      <div class="metric-value">8,140</div>
+      <div class="metric-delta delta-down">17% of active base</div>
+    </div>
+  </div>
+
+  <div class="controls-row">
+    <label>Cohort view:</label>
+    <select id="cohortSelect" onchange="renderCohort()">
+      <option value="0">Jan 2024 (5,200 users)</option>
+      <option value="1">Mar 2024 (6,100 users)</option>
+      <option value="2">Jun 2024 (7,800 users)</option>
+      <option value="3">Sep 2024 (8,500 users)</option>
+    </select>
+    <label style="margin-left:8px;">Segment:</label>
+    <select id="segSelect" onchange="renderCohort()">
+      <option value="all">All segments</option>
+      <option value="premium">Premium</option>
+      <option value="standard">Standard</option>
+      <option value="freemium">Freemium</option>
+    </select>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Cohort retention curve</div>
+      <div class="chart-desc">% of cohort retained at each month. Steeper drop in months 1–3 indicates onboarding friction.</div>
+      <div style="position:relative; height:200px;">
+        <canvas id="retentionChart" role="img" aria-label="Line chart showing cohort retention curves over 12 months for 4 cohorts. All cohorts show 60-75% retention by month 12.">Retention data: Month 1 ~88%, Month 3 ~76%, Month 6 ~68%, Month 12 ~62% average.</canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Revenue per cohort month</div>
+      <div class="chart-desc">Average monthly revenue contribution per retained user. Growth indicates upsell traction.</div>
+      <div style="position:relative; height:200px;">
+        <canvas id="revenueChart" role="img" aria-label="Bar chart of average monthly revenue per retained user across 12 cohort months. Revenue grows from £11 at month 1 to £22 at month 12.">Revenue per user grows from £11 in month 1 to £22 by month 12.</canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-full">
+    <div class="chart-title">Monthly revenue trend & churn-adjusted forecast</div>
+    <div class="chart-desc">Actual revenue vs predicted if current churn rates persist. Gap represents £ at risk from preventable churn.</div>
+    <div class="legend-row">
+      <span class="legend-item"><span class="legend-dot" style="background:#378ADD;"></span>Actual revenue</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#1D9E75;"></span>Forecast (retained)</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#E24B4A; opacity:0.5;"></span>Revenue at risk</span>
+    </div>
+    <div style="position:relative; height:220px;">
+      <canvas id="trendChart" role="img" aria-label="Line chart showing actual monthly revenue from Jan to Dec 2024, a forecast line, and shaded revenue at risk from churn.">Actual revenue grows from £520k in Jan to £780k in Dec. Forecast without churn intervention reaches £940k. Revenue at risk gap widens over the year.</canvas>
+    </div>
+  </div>
+
+  <div class="db-title" style="margin-bottom:10px; font-size:13px;">LTV segment breakdown</div>
+  <div class="segment-grid">
+    <div class="seg-card">
+      <div class="seg-name" style="color:#185FA5;">Premium (18% of base)</div>
+      <div class="seg-bar-wrap"><div class="seg-bar" style="width:88%; background:#378ADD;"></div></div>
+      <div class="seg-stats">
+        <div><div class="seg-stat-label">12m LTV</div><div class="seg-stat-val">£384</div></div>
+        <div><div class="seg-stat-label">Churn rate</div><div class="seg-stat-val">6.2%</div></div>
+        <div><div class="seg-stat-label">Avg tenure</div><div class="seg-stat-val">14.2 mo</div></div>
+        <div><div class="seg-stat-label">Rev share</div><div class="seg-stat-val">41%</div></div>
+      </div>
+    </div>
+    <div class="seg-card">
+      <div class="seg-name" style="color:#0F6E56;">Standard (49% of base)</div>
+      <div class="seg-bar-wrap"><div class="seg-bar" style="width:55%; background:#1D9E75;"></div></div>
+      <div class="seg-stats">
+        <div><div class="seg-stat-label">12m LTV</div><div class="seg-stat-val">£142</div></div>
+        <div><div class="seg-stat-label">Churn rate</div><div class="seg-stat-val">14.8%</div></div>
+        <div><div class="seg-stat-label">Avg tenure</div><div class="seg-stat-val">9.1 mo</div></div>
+        <div><div class="seg-stat-label">Rev share</div><div class="seg-stat-val">42%</div></div>
+      </div>
+    </div>
+    <div class="seg-card">
+      <div class="seg-name" style="color:#854F0B;">Freemium (33% of base)</div>
+      <div class="seg-bar-wrap"><div class="seg-bar" style="width:22%; background:#EF9F27;"></div></div>
+      <div class="seg-stats">
+        <div><div class="seg-stat-label">12m LTV</div><div class="seg-stat-val">£28</div></div>
+        <div><div class="seg-stat-label">Churn rate</div><div class="seg-stat-val">31.4%</div></div>
+        <div><div class="seg-stat-label">Avg tenure</div><div class="seg-stat-val">4.8 mo</div></div>
+        <div><div class="seg-stat-label">Rev share</div><div class="seg-stat-val">17%</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="insight-row">
+    <div class="insight" style="border-color:#378ADD;">
+      <div class="insight-label" style="color:#185FA5;">Key finding</div>
+      <div class="insight-text">Month-3 drop is the largest single churn event (-12pp). Delayed response time and low feature adoption are correlated drivers.</div>
+    </div>
+    <div class="insight" style="border-color:#E24B4A;">
+      <div class="insight-label" style="color:#A32D2D;">Revenue risk</div>
+      <div class="insight-text">Freemium segment churn at 31% destroys £160k/month in potential upgrade revenue. Conversion rate improvement of 5pp adds £38k monthly.</div>
+    </div>
+    <div class="insight" style="border-color:#1D9E75;">
+      <div class="insight-label" style="color:#0F6E56;">Retention lever</div>
+      <div class="insight-text">Premium users who activate 3+ product features in month 1 show 91% retention at month 6 vs 58% for single-feature users.</div>
+    </div>
+  </div>
+
+  <button class="ask-btn" onclick="sendPrompt('Based on the fintech retention dashboard, what SQL queries would I need to build the cohort retention table and the LTV segment breakdown from raw transaction data?')">Ask Claude: what SQL builds this analysis ↗</button>
+  <button class="ask-btn" style="margin-left:8px;" onclick="sendPrompt('How would I explain this fintech retention dashboard in a Revolut or Adyen interview?')">Ask Claude: how to present this in an interview ↗</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const cohortData = [
+  [100,87,79,73,69,66,64,62,61,60,59,58],
+  [100,89,81,75,71,68,66,64,63,62,61,60],
+  [100,85,76,70,66,63,61,59,58,57,56,55],
+  [100,88,80,74,70,67,65,63,62,61,60,59]
+];
+const segMultipliers = { all:1, premium:1.18, standard:0.95, freemium:0.72 };
+const months = ['M0','M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11'];
+const cohortColors = ['#378ADD','#1D9E75','#BA7517','#993556'];
+const cohortDash = [[],(ctx)=>ctx.p0.skip||ctx.p1.skip?[]:[6,4],(ctx)=>ctx.p0.skip||ctx.p1.skip?[]:[3,3],[]];
+
+let retChart, revChart, trendChart;
+
+function renderCohort() {
+  const ci = parseInt(document.getElementById('cohortSelect').value);
+  const seg = document.getElementById('segSelect').value;
+  const mult = segMultipliers[seg];
+  const base = cohortData[ci].map(v => Math.round(v * mult * (seg==='all'?1:1)));
+
+  if (retChart) retChart.destroy();
+  retChart = new Chart(document.getElementById('retentionChart'), {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: cohortData.map((d,i) => ({
+        label: ['Jan','Mar','Jun','Sep'][i]+' cohort',
+        data: d.map(v => Math.round(v * mult)),
+        borderColor: cohortColors[i],
+        backgroundColor: 'transparent',
+        borderWidth: i===ci?2.5:1,
+        borderDash: i===ci?[]:[4,3],
+        pointRadius: i===ci?3:0,
+        tension: 0.3
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { min: 40, max: 105, ticks: { callback: v=>v+'%', font:{size:10} }, grid:{color:'rgba(128,128,128,0.1)'} },
+        x: { ticks: { font:{size:10} }, grid:{display:false} }
+      }
+    }
+  });
+
+  const revBase = [11,13,14,15,16,17,17,18,19,20,21,22];
+  const revData = revBase.map(v => parseFloat((v * (seg==='premium'?1.9:seg==='freemium'?0.35:seg==='standard'?1.05:1)).toFixed(2)));
+  if (revChart) revChart.destroy();
+  revChart = new Chart(document.getElementById('revenueChart'), {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [{
+        label: 'Avg revenue/user',
+        data: revData,
+        backgroundColor: '#378ADD',
+        borderRadius: 3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { callback: v=>'£'+v, font:{size:10} }, grid:{color:'rgba(128,128,128,0.1)'} },
+        x: { ticks: { font:{size:10} }, grid:{display:false} }
+      }
+    }
+  });
+}
+
+function renderTrend() {
+  const labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const actual = [520,548,571,592,614,638,660,683,706,731,756,782];
+  const forecast = [520,552,585,619,654,691,729,768,809,851,895,941];
+  const atRisk = actual.map((v,i) => forecast[i] - v);
+
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(document.getElementById('trendChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'line', label: 'Actual revenue',
+          data: actual, borderColor: '#378ADD', backgroundColor: 'transparent',
+          borderWidth: 2, pointRadius: 3, tension: 0.3, order: 1
+        },
+        {
+          type: 'line', label: 'Forecast (retained)',
+          data: forecast, borderColor: '#1D9E75', backgroundColor: 'transparent',
+          borderWidth: 2, borderDash: [5,4], pointRadius: 0, tension: 0.3, order: 2
+        },
+        {
+          type: 'bar', label: 'Revenue at risk',
+          data: atRisk,
+          backgroundColor: 'rgba(226,75,74,0.25)',
+          borderRadius: 2, order: 3
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { callback: v=>'£'+(v/1000).toFixed(0)+'k', font:{size:10} }, grid:{color:'rgba(128,128,128,0.1)'} },
+        x: { ticks: { font:{size:10} }, grid:{display:false} }
+      }
+    }
+  });
+}
+
+renderCohort();
+renderTrend();
+</script>
