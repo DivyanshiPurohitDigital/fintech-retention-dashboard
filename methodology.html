@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Methodology — Fintech Retention & Revenue Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f9f9f8; color: #1a1a1a; padding: 2rem 1rem; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  .back { font-size: 12px; color: #888; margin-bottom: 2rem; }
+  .back a { color: #378ADD; text-decoration: none; }
+  h1 { font-size: 20px; font-weight: 500; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 2.5rem; line-height: 1.6; }
+  .step { background: #fff; border: 0.5px solid #e0dfd8; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+  .step-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #888; margin-bottom: 6px; }
+  .step-title { font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 10px; }
+  .step-body { font-size: 13px; color: #444; line-height: 1.7; }
+  pre { margin-top: 12px; font-size: 11px; font-family: 'SF Mono', 'Fira Code', monospace; background: #f4f3f0; border: 0.5px solid #e0dfd8; border-radius: 8px; padding: 14px; overflow-x: auto; line-height: 1.7; color: #1a1a1a; }
+  .findings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .finding { background: #f4f3f0; border-radius: 8px; padding: 10px 12px; }
+  .finding-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #888; margin-bottom: 4px; }
+  .finding-val { font-size: 13px; font-weight: 500; color: #1a1a1a; }
+  .finding-sub { font-size: 11px; color: #666; margin-top: 2px; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 1.5rem; }
+  .tag { font-size: 11px; background: #eef4fb; color: #185FA5; border-radius: 6px; padding: 4px 10px; }
+  .divider { border: none; border-top: 0.5px solid #e0dfd8; margin: 2rem 0; }
+  .footer { font-size: 11px; color: #aaa; text-align: center; margin-top: 2rem; }
+  .footer a { color: #378ADD; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="back"><a href="index.html">← Back to dashboard</a></div>
+
+  <h1>Methodology breakdown</h1>
+  <div class="subtitle">Fintech Customer Retention & Revenue Intelligence Dashboard · Simulated UK challenger bank dataset · 48,200 customers · 18-month observation window</div>
+
+  <div class="step">
+    <div class="step-label">Step 1</div>
+    <div class="step-title">Cohort construction — SQL window function approach</div>
+    <div class="step-body">Each cohort groups users by their first transaction month using <code>DATE_TRUNC</code> and <code>MIN(txn_date)</code>. A <code>FIRST_VALUE</code> window function partitioned by cohort month calculates the retention percentage at each subsequent month relative to the cohort's starting size. Active is defined as at least one transaction recorded within the 30-day calendar window.</div>
+    <pre>SELECT
+  cohort_month,
+  activity_month,
+  COUNT(DISTINCT user_id) AS retained_users,
+  ROUND(
+    COUNT(DISTINCT user_id) * 100.0 /
+    FIRST_VALUE(COUNT(DISTINCT user_id))
+      OVER (
+        PARTITION BY cohort_month
+        ORDER BY activity_month
+      ), 1
+  ) AS retention_pct
+FROM (
+  SELECT
+    user_id,
+    DATE_TRUNC('month', MIN(txn_date)) AS cohort_month,
+    DATE_TRUNC('month', txn_date)      AS activity_month
+  FROM transactions
+  GROUP BY user_id, DATE_TRUNC('month', txn_date)
+) t
+GROUP BY cohort_month, activity_month
+ORDER BY cohort_month, activity_month;</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-label">Step 2</div>
+    <div class="step-title">LTV segmentation — revenue-based bucketing</div>
+    <div class="step-body">Users are assigned to segments based on 12-month cumulative revenue. Thresholds are calibrated against the simulated product tier structure of a UK challenger bank offering free, standard, and premium account types. Churn rate per segment is the average monthly churn across the observation window, calculated as users lost in month N divided by users active in month N-1.</div>
+    <div class="findings">
+      <div class="finding">
+        <div class="finding-label">Premium threshold</div>
+        <div class="finding-val">£200+ / 12 months</div>
+        <div class="finding-sub">18% of base · 41% of revenue</div>
+      </div>
+      <div class="finding">
+        <div class="finding-label">Standard threshold</div>
+        <div class="finding-val">£50–£199 / 12 months</div>
+        <div class="finding-sub">49% of base · 42% of revenue</div>
+      </div>
+      <div class="finding">
+        <div class="finding-label">Freemium threshold</div>
+        <div class="finding-val">Below £50 / 12 months</div>
+        <div class="finding-sub">33% of base · 17% of revenue</div>
+      </div>
+      <div class="finding">
+        <div class="finding-label">Churn delta</div>
+        <div class="finding-val">31.4% vs 6.2%</div>
+        <div class="finding-sub">Freemium vs Premium churn rate</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-label">Step 3</div>
+    <div class="step-title">Churn-adjusted revenue forecast — quantifying £ at risk</div>
+    <div class="step-body">The forecast line assumes current average revenue per user (ARPU) held constant with zero incremental churn from the observation baseline. The gap between forecast and actual revenue in each month represents revenue destroyed by churn. This reframes churn from an operational percentage into a direct £ business cost, making it actionable for product and commercial teams rather than remaining an abstract retention metric.</div>
+    <pre>-- Revenue at risk per month
+SELECT
+  month,
+  SUM(forecast_revenue - actual_revenue) AS revenue_at_risk
+FROM (
+  SELECT
+    month,
+    retained_users * avg_arpu        AS actual_revenue,
+    baseline_users * avg_arpu        AS forecast_revenue
+  FROM monthly_cohort_summary
+) t
+GROUP BY month
+ORDER BY month;</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-label">Step 4</div>
+    <div class="step-title">Key findings derivation — month-3 drop and activation split</div>
+    <div class="step-body">The month-3 retention drop (-12pp) was identified by calculating the month-on-month delta across all four cohorts and averaging. It consistently represented the largest single-month churn event, indicating a structural onboarding friction point rather than a cohort-specific anomaly. The premium activation finding (91% vs 58% six-month retention) was derived by splitting the premium cohort at day 30 into two groups — users who activated three or more product features versus users who activated one — then comparing survival rates at month 6 using a basic retention query partitioned by the activation flag.</div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="tag-row">
+    <span class="tag">SQL</span>
+    <span class="tag">Cohort analysis</span>
+    <span class="tag">LTV segmentation</span>
+    <span class="tag">Churn modelling</span>
+    <span class="tag">Revenue forecasting</span>
+    <span class="tag">Window functions</span>
+    <span class="tag">Chart.js</span>
+    <span class="tag">Python / Pandas</span>
+    <span class="tag">Power BI methodology</span>
+    <span class="tag">Fintech analytics</span>
+  </div>
+
+  <div class="footer" style="margin-top:2rem;">
+    Built by Divyanshi Purohit · MSc Digital Business, University of Southampton ·
+    <a href="https://github.com/YOUR_USERNAME/fintech-retention-dashboard">GitHub</a>
+  </div>
+
+</div>
+</body>
+</html>
